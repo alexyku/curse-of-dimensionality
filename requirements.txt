@@ -1,6 +1,7 @@
 boto==2.46.1
 Flask==0.12.1
 gunicorn==19.6.0
+matplotlib==2.1.2
 numpy==1.8.2
 pandas==0.19.2
 Pillow==2.3.0

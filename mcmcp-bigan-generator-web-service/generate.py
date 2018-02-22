@@ -102,8 +102,6 @@ def inverse_transform(X, crop=args.crop_resize):
 def gen_transform(gX):
     return rescale(gX, (0, 1), (-1, 1))  # dataset.native_range)
 
-model_dir = '%s/models'%(args.exp_dir,)
-
 same = 1
 grid_size = same, same  # one image
 
@@ -125,7 +123,7 @@ gXtest = gan.Generator(source=train_gen.net, mode='test', **gen_kwargs).data
 
 _gen = lazy_function(Z, gXtest.value)
 
-def load_params(weight_prefix=None, resume_epoch=None,
+def load_params(model_dir, weight_prefix=None, resume_epoch=None,
                 groups=dict(gen=train_gen.net.params())):
     weight_prefix = '%s/%d' % (model_dir, resume_epoch)
     for key, param_list in groups.iteritems():
@@ -152,29 +150,9 @@ def load_params(weight_prefix=None, resume_epoch=None,
 #     color_grid_vis(inverse_transform(gX), grid_size, filename)
 #     print 'SAVED SAMPLE!'
 
-# load the weights
-load_params(weight_prefix=args.weights, resume_epoch=args.resume)
-print("WEIGHTS LOADED...")
 
 # this version returns an image as a numpy array
-# def render_image(z, _gen=_gen):
-#     # pass z through generator to render
-#     X = _gen(*z)
-#     # fix image up
-#     X = inverse_transform(X)
-#     h, w = X[0].shape[:2]
-#     img = np.zeros((64, 64, 3))
-#     for n, x in enumerate(X):
-#         j = n/1
-#         i = n%1
-#         img[j*h:j*h+h, i*w:i*w+w, :] = x
-#     return img
-# z = [floatX(np.random.uniform(-1,1,size=(1, 200)))]
-# imsave('test_render_function.png',render_image(z))
-
-
-# this version returns the path for the uuid file
-def render_image(z=None, _gen=_gen):
+def _render_image(z=None, _gen=_gen):
     if z is None:
         z = [floatX(np.random.uniform(-1, 1, size=(np.prod(grid_size), 200)))]
     else:
@@ -190,6 +168,14 @@ def render_image(z=None, _gen=_gen):
         j = n/1
         i = n%1
         img[j*h:j*h+h, i*w:i*w+w, :] = x
+    return img
+# z = [floatX(np.random.uniform(-1,1,size=(1, 200)))]
+# imsave('test_render_function.png',render_image(z))
+
+
+# this version returns the path for the uuid file
+def render_image(z=None, _gen=_gen):
+    img = _render_image(z, _gen)
     # make sure there is a tmp directory
     if not os.path.exists('tmp'):
         os.makedirs('tmp')
@@ -200,5 +186,13 @@ def render_image(z=None, _gen=_gen):
     # return the path to the image
     return path
 
-# z = [floatX(np.random.uniform(-1,1,size=(1, 200)))]
-# print render_image(z)
+
+if __name__ == '__main__':
+    model_dir = '%s/models'%(args.exp_dir,)
+    
+    # load the weights
+    load_params(model_dir, weight_prefix=args.weights, resume_epoch=args.resume)
+    print("WEIGHTS LOADED...")
+
+    z = [floatX(np.random.uniform(-1,1,size=(1, 200)))]
+    print render_image(z)
