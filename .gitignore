@@ -1,3 +1,6 @@
-
-*.pyc
 tmp/*
+*.pyc
+**/nohup.out
+**/.ipynb_checkpoints
+.DS_Store
+__pycache__
