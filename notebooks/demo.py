@@ -7,6 +7,37 @@ from mpl_toolkits.mplot3d import Axes3D
 
 # TODO: offload the code in `experiment_design.ipynb` to here.
 
+# utility function for plotting a row of images
+def imshows(images, labels=None, n=None, scale=10, axis='off', **kwargs):
+    n = len(images) if (n is None) else n
+    _, axs = plt.subplots(1, n, figsize=(n * scale, scale))
+    for i in xrange(n):
+        axs[i].imshow(images[i], **kwargs)
+        axs[i].axis(axis)
+        if labels:
+            axs[i].set_title(labels[i])
+
+
+def z_prime(z):
+    """Forces the elements of `z` to have values
+    in the range [-1, 1] according to the formula
+    above.
+    """
+    z = np.array([z])
+    mask = np.abs(z) > 1
+    u = z[mask]
+    v = -np.sign(u) * (1 - (u - np.floor(u)))
+    z[mask] = v
+    return z[0]
+
+
+def sample_z(mean=0.0, SD=1.0):
+    """Samples a multivariate gaussian vector.
+    Applies a `z_prime` range correction.
+    """
+    z = np.random.normal(mean, SD)
+    return z_prime(z)
+
 
 ########################### creating_categories.ipynb ##########################
 
@@ -24,7 +55,7 @@ def _create_category_means(dist, dims=200):
 
 
 def create_category_means(dist, dims=200):
-    mu1, mu2, _ = _create_category_pairs(dist, dims)
+    mu1, mu2, _ = _create_category_means(dist, dims)
     return mu1, mu2
 
 
