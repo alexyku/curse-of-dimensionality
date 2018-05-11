@@ -38,10 +38,14 @@ def get_config(offset=1.0,
                std=0.25,
                ndims=200,
                nblocks=5,
-               ntrials=20
+               ntrials=20,
+               print_feedback=True,
               ):
     # initialize an experiment
     config = dotdict()
+
+    # reproducable results
+    config.seed = np.random.randint(0, 9999)
     
     # category creation
     config.offset = offset
@@ -58,6 +62,9 @@ def get_config(offset=1.0,
     config.bool_mask = np.zeros(200).astype(bool)
     config.bool_mask[config.dims] = True
     # config.scaled_std = std * (200 / ndims)
+
+    # supervised or unsupervised?
+    config.print_feedback = print_feedback
     
     # leaning/inference
     config.nblocks = nblocks
@@ -89,6 +96,7 @@ def get_example(config,
 
 def get_blocks(config):
     # returns a nested-list of example dicts
+    np.random.seed(config.seed)
     return [
         [get_example(config)for _ in range(config.ntrials)]
         for _ in range(config.nblocks)
@@ -125,15 +133,16 @@ def pilot_experiment(blocks, config):
     bivimias_button = widgets.Button(description="Bivimias")
     lorifens_button = widgets.Button(description="Lorifens")
 
-    def print_prefix():
+    def print_prefix(print_feedback=True):
         nquestions = config.nblocks * config.ntrials
         print "Question: %d/%d" % (status.question_i + 1, nquestions)
         print "Block: %d/%d" % (status.block_i + 1, config.nblocks)
-        if status.question_i == 0:
-            pct_correct = 0.0
-        else:
-            pct_correct = status.ncorrect / float(status.question_i)
-        print "Correct: %.4f" % pct_correct
+        if config.print_feedback:
+            if status.question_i == 0:
+                pct_correct = 0.0
+            else:
+                pct_correct = status.ncorrect / float(status.question_i)
+            print "Correct: %.4f" % pct_correct
         print
 
     def print_prompt():
@@ -186,10 +195,13 @@ def pilot_experiment(blocks, config):
         correct = get_trial()["category"]  # before update
         log_and_increment(category)
         print_prefix()
-        if correct == category:
-            print "Correct!"
+        if config.print_feedback:
+            if correct == category:
+                print "Correct!"
+            else:
+                print "Incorrect."
         else:
-            print "Incorrect."
+            print
         print "\n" * 14
         display(continue_button)
 
@@ -199,3 +211,9 @@ def pilot_experiment(blocks, config):
     lorifens_button.on_click(lambda _: common_choice_click("lorifens"))
 
     display(start_button)
+
+def experiment_is_complete(blocks):
+    return all([
+        all(["predicted_category" in y for y in x])
+        for x in blocks
+    ])
