@@ -23,6 +23,12 @@ def trunc_unif_categories(offset=0.4):
     bayes = (0.5 * a + 0.5 * b)
     return (a, b, bayes)
 
+def rand_categories():
+    a = np.random.uniform(-1, 1, 200)
+    b = np.random.uniform(-1, 1, 200)
+    bayes = (0.5 * a + 0.5 * b)
+    return (a, b, bayes)
+
 def trunc_gauss_sample(mean, std):
     # Samples `x` from a truncated gaussian in the hypercube
     # centered at `mean` with standard deviation `std`.
@@ -49,8 +55,7 @@ def get_config(offset=1.0,
     
     # category creation
     config.offset = offset
-    (config.bivimias, config.lorifens,
-     config.bayes) = trunc_unif_categories(offset)
+    (config.bivimias, config.lorifens, config.bayes) = rand_categories()
     config.dist = np.linalg.norm(
         config.bivimias - config.lorifens)
     
@@ -72,6 +77,31 @@ def get_config(offset=1.0,
     
     return config
 
+
+# Mean sampling
+def get_mean_example(config,
+                     category='random',
+                     render_img=True
+                    ):
+    # generates an example latent vector
+    # returns an example dict
+    if category == 'random':
+        category = np.random.choice(
+            ['bivimias', 'lorifens'])
+    # choose mean to use
+    if category == 'bivimias':
+        mean = config.bivimias
+    elif category == 'lorifens':
+        mean = config.lorifens
+    noise = np.random.normal(0, config.std, 200)
+    z = mean + (config.bool_mask * noise)
+    example = {"category": category, "z": z}
+    if render_img:
+        example["img"] = render(z)
+    return example
+
+
+# Midpoint sampling
 def get_example(config,
                 category='random',
                 render_img=True
@@ -98,7 +128,7 @@ def get_blocks(config):
     # returns a nested-list of example dicts
     np.random.seed(config.seed)
     return [
-        [get_example(config)for _ in range(config.ntrials)]
+        [get_mean_example(config)for _ in range(config.ntrials)]
         for _ in range(config.nblocks)
     ]
 
