@@ -5,9 +5,14 @@ import matplotlib.pyplot as plt
 # %matplotlib inline
 import sys
 sys.path.append('../src/mcmcp-bigan-generator-web-service/')
+import time
 from generate import floatX, load_params
 from generate import _render_image as render
 # utility functions for this notebook
+
+from IPython.display import display
+from IPython.display import clear_output
+import ipywidgets as widgets
 
 model_dir = '../src/mcmcp-bigan-generator-web-service/exp/imagenet_1000_size72_u-200_bigan/models'
 load_params(model_dir, weight_prefix=None, resume_epoch=100)
@@ -146,10 +151,8 @@ def imshows(images,
         plt.axis(axis)
         if labels: plt.title(labels[i])
             
-def pilot_experiment(blocks, config):
-    from IPython.display import display
-    from IPython.display import clear_output
-    import ipywidgets as widgets
+def pilot_experiment(blocks, config, participant, logdir):
+    config.start_time = time.time()
     
     status = dotdict()
     status.block_i = 0
@@ -160,8 +163,8 @@ def pilot_experiment(blocks, config):
     # buttons
     start_button = widgets.Button(description="Start")
     continue_button = widgets.Button(description="Continue")
-    bivimias_button = widgets.Button(description="Bivimias")
-    lorifens_button = widgets.Button(description="Lorifens")
+    bivimias_button = widgets.Button(description="Bivimiano")
+    lorifens_button = widgets.Button(description="Lorifensky")
 
     def print_prefix(print_feedback=True):
         nquestions = config.nblocks * config.ntrials
@@ -176,7 +179,7 @@ def pilot_experiment(blocks, config):
         print
 
     def print_prompt():
-        print("Is this a bivimias or lorifens?")
+        print("Is this a Bivimiano or a Lorifensky?")
 
     def is_done():
         nquestions = config.nblocks * config.ntrials
@@ -212,13 +215,17 @@ def pilot_experiment(blocks, config):
                 (bivimias_button,
                  lorifens_button)))
         else:
+            config.end_time = time.time()
+            
             print("Thank you for completing this experiment!")
             if status.question_i == 0:
                 pct_correct = 0.0
             else:
                 pct_correct = status.ncorrect / float(status.question_i)
-            print "Correct: %.4f" % pct_correct
-            print "\n" * 20
+            print "Correct: {:.1f}%".format(100 * pct_correct)
+            print "\n"
+            
+            log_experiment(blocks, config, status, participant, logdir)
 
     def common_choice_click(category):
         clear_output()
@@ -247,3 +254,37 @@ def experiment_is_complete(blocks):
         all(["predicted_category" in y for y in x])
         for x in blocks
     ])
+
+
+def log_experiment(blocks, config, status, participant, logdir):
+    if experiment_is_complete(blocks):
+        start = format_timestamp(config.start_time)
+        end = format_timestamp(config.end_time)
+        
+        participant_dir = 'participant_' + str(participant['id_num'])
+        outdir = os.path.join(logdir, participant_dir, ( "ndims-" + str(config.ndims)
+                                                       + "-std-" + str(config.std)
+                                                       + "- " + start))
+        os.makedirs(outdir)
+
+        np.savez(os.path.join(outdir, "config.npz"), **config)
+        np.savez(os.path.join(outdir, "blocks.npz"), *blocks)
+
+        with open(os.path.join(outdir, 'log.txt'), 'w') as f:
+            f.write('Participant: {} ({})'.format(participant['id_num'], participant['initials']) + '\n')
+            f.write('Start time: {}'.format(start) + '\n')
+            f.write('End time: {}'.format(end) + '\n')
+            f.write('Elapsed time: {:.2f}s'.format(config.end_time - config.start_time) + '\n')
+            f.write('Dims: {}'.format(config.ndims) + '\n')
+            f.write('Std: {}'.format(config.std) + '\n')
+            f.write('Correct: {} / {}'.format(status.ncorrect, status.question_i) + '\n')
+            if status.question_i > 0:
+                f.write('Percent correct: {:.4f}'.format(status.ncorrect / status.question_i) + '\n')
+
+        print("Logged experiment to %s" % outdir)
+    else:
+        print("Experiment is incomplete, not logging.")
+        
+        
+def format_timestamp(t):
+    return time.strftime('%c', time.localtime(t))
