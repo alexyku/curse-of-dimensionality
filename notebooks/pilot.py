@@ -28,7 +28,9 @@ def trunc_unif_categories(offset=0.4):
     bayes = (0.5 * a + 0.5 * b)
     return (a, b, bayes)
 
-def rand_categories():
+def rand_categories(seed=None):
+    if seed is not None:
+        np.random.seed(seed)
     a = np.random.uniform(-1, 1, 200)
     b = np.random.uniform(-1, 1, 200)
     bayes = (0.5 * a + 0.5 * b)
@@ -51,16 +53,19 @@ def get_config(offset=1.0,
                nblocks=5,
                ntrials=20,
                print_feedback=True,
+               seed=None,
               ):
     # initialize an experiment
     config = dotdict()
-
-    # reproducable results
-    config.seed = np.random.randint(0, 9999)
+    
+    if seed is None:
+        seed = np.random.randint(0, 9999)
+    config.seed = seed
+    np.random.seed(seed)
     
     # category creation
     config.offset = offset
-    (config.bivimias, config.lorifens, config.bayes) = rand_categories()
+    (config.bivimias, config.lorifens, config.bayes) = rand_categories(seed)
     config.dist = np.linalg.norm(
         config.bivimias - config.lorifens)
     
@@ -86,10 +91,11 @@ def get_config(offset=1.0,
 # Mean sampling
 def get_mean_example(config,
                      category='random',
-                     render_img=True
+                     render_img=True,
                     ):
     # generates an example latent vector
     # returns an example dict
+    
     if category == 'random':
         category = np.random.choice(
             ['bivimias', 'lorifens'])
@@ -100,6 +106,7 @@ def get_mean_example(config,
         mean = config.lorifens
     noise = np.random.normal(0, config.std, 200)
     z = mean + (config.bool_mask * noise)
+    z = np.tanh(z)
     example = {"category": category, "z": z}
     if render_img:
         example["img"] = render(z)
